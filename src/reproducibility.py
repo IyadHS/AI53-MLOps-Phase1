@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 import numpy as np
 import torch
+from torch.version import cuda
 
 
 def set_reproducibility(seed: int) -> None:
@@ -12,19 +13,29 @@ def set_reproducibility(seed: int) -> None:
     controlled. Improve CUDA/cuDNN repeatability when CUDA is available.
     """
     random.seed(seed)
-    # TODO: NumPy
-    # TODO: PyTorch CPU
-    # TODO: CUDA, if available
-    # TODO: cuDNN deterministic / benchmark flags
+    # Done: NumPy
+    np.random.seed(seed)
+    # Done: PyTorch CPU
+    torch.manual_seed(seed)
+    # Done: CUDA, if available
+    if torch.cuda.is_available():
+        cuda.manual_seed_all(seed)
+    # Done: cuDNN deterministic / benchmark flags
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 def seed_worker(worker_id: int) -> None:
     """Seed a DataLoader worker from PyTorch's worker seed."""
-    # TODO: implement worker seeding for NumPy and Python random.
-    pass
+    # Done: implement worker seeding for NumPy and Python random.
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
 
 
 def make_generator(seed: int) -> torch.Generator:
     """Return a seeded torch.Generator used for deterministic shuffling."""
-    # TODO
-    return torch.Generator()
+    # Done
+    generator = torch.Generator()
+    generator.manual_seed(seed)
+    return generator

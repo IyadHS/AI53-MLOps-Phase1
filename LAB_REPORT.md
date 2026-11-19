@@ -78,3 +78,33 @@ A working `model.pt` only demonstrates that a trained model has been saved and c
 Reproducibility requires the exact code version, dataset identity and splits, software dependencies, hyperparameters, random seeds and training configuration. Without this information, another developer cannot reliably reconstruct the experiment or verify how the model was obtained.
 
 Therefore, a reproducible ML experiment requires version-controlled code, tracked data, a locked environment and documented training runs, rather than only a saved model file.
+
+## Milestone 1 — Make Training Repeatable
+
+### 1.1 Objective
+
+The objective of this milestone is to control the main sources of randomness in the training pipeline to improve experiment reproducibility.
+
+### 1.2 Implementation
+
+The following functions were implemented in `src/reproducibility.py`:
+
+- **`set_reproducibility(seed)`**: Initializes Python, NumPy and PyTorch random number generators. It also configures CUDA seeding when available and sets cuDNN deterministic and benchmark flags.
+- **`make_generator(seed)`**: Creates a PyTorch generator initialized with the specified seed to support reproducible DataLoader shuffling.
+- **`seed_worker(worker_id)`**: Initializes NumPy and Python random generators in DataLoader workers using the PyTorch worker seed.
+
+### 1.3 Test Results
+
+Command executed:
+
+`uv run --locked pytest -q tests/test_reproducibility.py`
+
+**Result: 3 passed.**
+
+All three reproducibility tests now pass, whereas they initially failed during the starter audit.
+
+### 1.4 Engineering Checkpoint 2 — Reproducibility
+
+Seeding Python alone is insufficient because NumPy and PyTorch maintain separate random number generators. DataLoader shuffling and worker-level random transformations also require controlled seeds.
+
+The implemented functions improve reproducibility under the same execution conditions. However, seeds alone do not guarantee identical results across different hardware, library versions or nondeterministic GPU operations.
