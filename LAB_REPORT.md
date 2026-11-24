@@ -226,3 +226,105 @@ Compared with the results obtained after Milestone 1, the number of passing test
 ### 3.7 Conclusion
 
 The data-quality gate was successfully implemented and validated through automated unit tests and execution on the real dataset. The project can now automatically detect structural inconsistencies, incorrect image counts, empty classes and corrupted images before proceeding to downstream machine learning operations. The deterministic quality report also provides a reliable output for integration into the DVC pipeline in the next milestone.
+
+## Milestone 4 — Design the DVC Pipeline from Scratch
+
+### 4.1 Objective
+
+The objective of this milestone is to define a reproducible and dependency-aware machine learning pipeline using DVC. The pipeline automates data validation, data preparation, candidate model training and final evaluation while avoiding unnecessary recomputation and preserving the independence of the test dataset.
+
+### 4.2 Pipeline Architecture
+
+A `dvc.yaml` file was created at the project root with four stages: `validate`, `prepare`, `train` and `evaluate`.
+
+The pipeline follows the architecture below:
+
+```text
+          data/raw.dvc
+           /       \
+      validate      |
+           \       /
+            prepare
+            /     \
+         train   evaluate
+```
+
+The TRAIN and EVALUATE stages are separate branches. TRAIN generates candidate models using the training and validation datasets, whereas EVALUATE loads an explicitly selected model from MLflow and measures its performance on the independent test dataset.
+
+### 4.3 Stage Definition
+
+| Stage | Main inputs | Main outputs |
+| VALIDATE | Raw dataset and validation code | `reports/data_quality.json` |
+| PREPARE | Raw dataset, quality report and image size | Processed images, CSV manifests and `reports/data_summary.json` |
+| TRAIN | Prepared training and validation images, corresponding manifests, training parameters and Python modules | Local model checkpoint, training summary, training curves and run manifest |
+| EVALUATE | Prepared test images, manifests, selected MLflow Run ID and evaluation parameters | Test metrics and confusion matrix |
+
+Each stage includes `pyproject.toml` and `uv.lock` as dependencies to track changes to the Python environment. Relevant local Python modules are also declared as dependencies, including indirect imports.
+
+### 4.4 Parameter Dependency Management
+
+Individual parameters from `params.yaml` are declared under the `params` section of each stage.
+
+PREPARE tracks `data.image_size`, while TRAIN tracks the parameters related to image size, training, augmentation, computation and MLflow configuration.
+
+EVALUATE tracks `selection.run_id`, `data.image_size`, `evaluation.batch_size`, `compute.device`, `tracking.uri` and `tracking.experiment`.
+
+This strategy prevents unrelated parameter modifications from triggering unnecessary stage executions.
+
+### 4.5 Output and Cache Management
+
+Large generated outputs, including processed images, dataset manifests and the local model checkpoint, are managed through the DVC cache.
+
+Small report files are declared with `cache: false` so that they can be versioned directly using Git.
+
+The files `reports/train_summary.json` and `reports/test_metrics.json` are declared as DVC metrics because they contain numerical model performance results.
+
+### 4.6 Dependency Design Questions
+
+1. Should PREPARE depend on `reports/data_quality.json`?
+Yes. This dependency ensures that the data-quality gate succeeds before data preparation begins, preventing invalid datasets from reaching subsequent stages.
+
+2. Should PREPARE also depend directly on `data/raw`?
+Yes. Raw image content can change without modifying the image counts or class distribution reported by VALIDATE. The direct dependency ensures that changes to the original images trigger data preparation even when the quality report remains unchanged.
+
+3. Which changes in `params.yaml` should make TRAIN run again?
+Changes to `data.image_size`, training hyperparameters, augmentation settings, the computing device and MLflow tracking configuration should trigger TRAIN. Changes to `evaluation.batch_size` and `selection.run_id` should not trigger training because they concern final evaluation.
+
+4. Why should EVALUATE track `selection.run_id`?
+The Run ID identifies the exact model selected from MLflow. Tracking this parameter ensures that changing the selected model invalidates previous evaluation results without triggering a new training execution.
+
+5. Which file contains scores that DVC should track as metrics?
+The training summary, `reports/train_summary.json`, contains training and validation performance metrics. The final evaluation report, `reports/test_metrics.json`, contains test accuracy and test Macro-F1. Both files are declared as DVC metrics.
+
+### 4.7 Pipeline Verification
+
+The pipeline definition was verified using the following commands:
+
+```bash
+uv run --locked dvc stage list
+uv run --locked dvc dag
+```
+
+The stage listing successfully identified all four stages:
+
+```text
+validate
+prepare
+train
+evaluate
+```
+
+The generated dependency graph confirmed that:
+- VALIDATE depends on the raw dataset.
+- PREPARE depends on both the raw dataset and the validation report.
+- TRAIN depends on the prepared training and validation data.
+- EVALUATE depends on PREPARE but does not depend directly on TRAIN.
+- The pipeline contains no circular dependencies.
+
+
+### 4.8 Conclusion
+
+The four-stage DVC pipeline was successfully defined and its dependency graph was verified.
+
+The architecture supports selective recomputation, dataset traceability, reproducible experiment management and independent final evaluation of a model selected from MLflow.
+
