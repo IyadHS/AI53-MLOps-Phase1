@@ -19,6 +19,9 @@ from src.model import BeanCNN
 from src.provenance import write_run_manifest
 from src.reproducibility import set_reproducibility
 
+import mlflow.pytorch
+from mlflow.models import infer_signature
+
 
 def resolve_device(requested: str) -> torch.device:
     """Resolve the execution device requested in params.yaml."""
@@ -157,15 +160,15 @@ def main() -> None:
         # -----------------------------------------------------
         # TODO 1 - CAPTURE PROVENANCE FIRST
         # -----------------------------------------------------
-        # Call write_run_manifest(...) HERE, before training creates
-        # model.pt, summaries, curves or other generated outputs.
-        # Store the returned dictionary in `run_manifest`, then read
-        # `training_data_identity` from run_manifest["data"].
-        #
-        # Do not postpone provenance capture until the end of TRAIN.
-        # -----------------------------------------------------
-        # run_manifest = ...
-        # training_identity = ...
+        run_manifest = write_run_manifest(
+            params=params,
+            device=str(device),
+            mlflow_run_id=run.info.run_id,
+            path=Path("reports/run_manifest.json")
+        )
+
+        training_identity = run_manifest["data"]["training_data_identity"]
+
 
         # -----------------------------------------------------
         # TODO 2 - LOG RUN PARAMETERS
@@ -175,6 +178,20 @@ def main() -> None:
         # random_state, augmentation_enabled, horizontal_flip,
         # rotation_degrees, device, training_data_identity.
         # -----------------------------------------------------
+        mlflow.log_params({
+            "image_size": params["data"]["image_size"],
+            "batch_size": params["train"]["batch_size"],
+            "epochs": params["train"]["epochs"],
+            "learning_rate": params["train"]["learning_rate"],
+            "dropout": params["train"]["dropout"],
+            "random_state": params["train"]["random_state"],
+            "augmentation_enabled": params["augmentation"]["enabled"],
+            "horizontal_flip": params["augmentation"]["horizontal_flip"],
+            "rotation_degrees": params["augmentation"]["rotation_degrees"],
+            "device": str(device),
+            "training_data_identity": training_identity
+        })
+
 
         # -----------------------------------------------------
         # TODO 3 - LOG TRAINING DATASET INPUT
@@ -188,6 +205,18 @@ def main() -> None:
         #   targets = "label"
         # Then register it with mlflow.log_input(..., context="training").
         # -----------------------------------------------------
+        training_dataset = mlflow.data.from_pandas(
+            train_manifest_df,
+            source=str(train_manifest_path),
+            name="bean-training",
+            targets="label"
+        )
+
+        mlflow.log_input(
+            training_dataset,
+            context="training"
+        )
+
 
         # =====================================================
         # 7. TRAIN + VALIDATE
@@ -217,9 +246,17 @@ def main() -> None:
 
             # TODO 4 - Log train_loss, val_loss,
             # val_accuracy and val_macro_f1 with step=epoch.
+            mlflow.log_metrics({
+                "train_loss": history["train_loss"][-1],
+                "val_loss": history["val_loss"][-1],
+                "val_accuracy": history["val_accuracy"][-1],
+                "val_macro_f1": history["val_macro_f1"][-1]
+            }, step=epoch)
+
 
         training_seconds = time.perf_counter() - start
         # TODO 5 - Log training_seconds to MLflow.
+        mlflow.log_metric("training_seconds", training_seconds)
 
         # =====================================================
         # 8. CREATE LOCAL OUTPUTS
@@ -279,6 +316,10 @@ def main() -> None:
         # Important: run_manifest.json must ALREADY EXIST here because
         # write_run_manifest(...) created it at the beginning of the Run.
         # Do NOT create the provenance manifest here.
+        mlflow.log_artifact("reports/training_curves.png")
+        mlflow.log_artifact("reports/train_summary.json")
+        mlflow.log_artifact("reports/run_manifest.json")
+
 
         # =====================================================
         # 10. LOG FINAL PYTORCH MODEL
@@ -295,12 +336,43 @@ def main() -> None:
         # the course eager BeanCNN. Import mlflow.pytorch and infer_signature.
         # Export a CPU model in evaluation mode with CPU examples.
         # Do not use the test set.
+        # Prepare the model for export
+        model = model.cpu()
+        model.eval()
 
-        print(
-            "Training complete. Resolve every TODO block before "
-            "starting the controlled experiment comparison."
+        # Obtain an input example from the validation dataset
+        example_images, _ = next(iter(val_loader))
+        example_images = example_images[:1].cpu()
+
+        # Compute the corresponding output example
+        with torch.no_grad():
+            example_outputs = model(example_images)
+
+        # Infer the model signature
+        input_example = example_images.numpy()
+        output_example = example_outputs.numpy()
+
+        signature = infer_signature(
+            input_example,
+            output_example
         )
 
+        # Log the final PyTorch model
+        mlflow.pytorch.log_model(
+            pytorch_model=model,
+            name="bean-cnn",
+            signature=signature,
+            input_example=input_example,
+            metadata={
+                "class_names": list(class_names),
+                "image_size": int(params["data"]["image_size"])
+            },
+            serialization_format="pickle",
+            code_paths=["src"]
+        )
+
+
+        print("Training complete. Model and reports logged to MLflow.")
 
 if __name__ == "__main__":
     main()

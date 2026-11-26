@@ -6,30 +6,30 @@
 The objective of this milestone is to audit the starter project and identify issues that prevent the machine-learning experiment from being fully reproducible. The audit focuses on random seeds, data validation, environment management, pipeline configuration, experiment tracking and model provenance.
 
 ### 0.2 Identified Issues
-- `src/reproducibility.py` - `set_reproducibility()` | NumPy and PyTorch random seeds are not initialized, and CUDA/cuDNN reproducibility settings are incomplete. | Seed all relevant random-number generators and configure CUDA/cuDNN when available.
-- `src/reproducibility.py` - `make_generator()` | The DataLoader generator is created without applying the requested seed. | Initialize the generator using the provided seed.
-- `src/reproducibility.py` - `seed_worker()` | The function is not implemented, leaving DataLoader worker randomness uncontrolled. | Initialize Python and NumPy random generators using the PyTorch worker seed.
-- `src/validate_data.py` - `validate_dataset()` | The function raises `NotImplementedError` instead of validating the dataset. Missing classes, incorrect image counts and corrupted images are not detected before training. | Implement the required data-quality checks and generate a deterministic JSON report.
-- `src/provenance.py` - `build_run_manifest()` | The function raises `NotImplementedError` and does not collect experiment provenance, including the Git commit, data identity, environment versions, hyperparameters and MLflow Run ID. | Implement provenance collection and generate `reports/run_manifest.json` to make training runs traceable.
-- `src/train.py` - MLflow logging | The MLflow integration contains incomplete TODOs. Training runs do not yet record all the required parameters, epoch-level metrics, dataset inputs, artifacts and final PyTorch model. | Complete MLflow tracking to record experiment parameters, metrics, provenance artifacts and the trained model for each run.
+- 'src/reproducibility.py' - 'set_reproducibility()' | NumPy and PyTorch random seeds are not initialized, and CUDA/cuDNN reproducibility settings are incomplete. | Seed all relevant random-number generators and configure CUDA/cuDNN when available.
+- 'src/reproducibility.py' - 'make_generator()' | The DataLoader generator is created without applying the requested seed. | Initialize the generator using the provided seed.
+- 'src/reproducibility.py' - 'seed_worker()' | The function is not implemented, leaving DataLoader worker randomness uncontrolled. | Initialize Python and NumPy random generators using the PyTorch worker seed.
+- 'src/validate_data.py' - 'validate_dataset()' | The function raises 'NotImplementedError' instead of validating the dataset. Missing classes, incorrect image counts and corrupted images are not detected before training. | Implement the required data-quality checks and generate a deterministic JSON report.
+- 'src/provenance.py' - 'build_run_manifest()' | The function raises 'NotImplementedError' and does not collect experiment provenance, including the Git commit, data identity, environment versions, hyperparameters and MLflow Run ID. | Implement provenance collection and generate 'reports/run_manifest.json' to make training runs traceable.
+- 'src/train.py' - MLflow logging | The MLflow integration contains incomplete TODOs. Training runs do not yet record all the required parameters, epoch-level metrics, dataset inputs, artifacts and final PyTorch model. | Complete MLflow tracking to record experiment parameters, metrics, provenance artifacts and the trained model for each run.
 
 ### 0.3 Initial Reproducibility Test Results
 
-Command executed: `uv run --locked pytest -q tests/test_reproducibility.py`
+Command executed: 'uv run --locked pytest -q tests/test_reproducibility.py'
 
 Results:
-- `test_global_seeding_repeats_python_numpy_torch` | FAILED | NumPy random values differed between executions with the same seed.
-- `test_generator_uses_requested_seed` | FAILED | Expected seed 7, but the generator returned 67280421310721.
-- `test_seed_worker_controls_numpy_and_python` | FAILED | Python and NumPy random values did not match the expected seeded values.
+- 'test_global_seeding_repeats_python_numpy_torch' | FAILED | NumPy random values differed between executions with the same seed.
+- 'test_generator_uses_requested_seed' | FAILED | Expected seed 7, but the generator returned 67280421310721.
+- 'test_seed_worker_controls_numpy_and_python' | FAILED | Python and NumPy random values did not match the expected seeded values.
 
 **Summary:** 3 tests failed, confirming that the starter's reproducibility functions require implementation. These failures are expected before Milestone 1 and provide evidence for the initial audit.
 
 ### 0.4 Initial Data Validation Test Results
 
-Command executed: `uv run --locked pytest -q tests/test_data_validation.py tests/test_validation_contract.py`
+Command executed: 'uv run --locked pytest -q tests/test_data_validation.py tests/test_validation_contract.py'
 
 Results:
-- Corrupted image detection | FAILED | The validator raises `NotImplementedError` instead of detecting corrupted images.
+- Corrupted image detection | FAILED | The validator raises 'NotImplementedError' instead of detecting corrupted images.
 - Valid dataset acceptance | FAILED | The validator cannot process a valid dataset.
 - Missing split detection | FAILED | Missing dataset splits are not checked.
 - Unexpected class detection | FAILED | Additional classes are not validated.
@@ -37,21 +37,21 @@ Results:
 - Incorrect image count detection | FAILED | Expected image counts are not verified.
 - Deterministic quality report | FAILED | The validator does not generate a reproducible report.
 
-**Summary:** All 7 tests failed because `validate_dataset()` is not implemented. The data-quality gate must be completed.
+**Summary:** All 7 tests failed because 'validate_dataset()' is not implemented. The data-quality gate must be completed.
 
 ### 0.5 Initial Provenance Test Results
 
-Command executed: `uv run --locked pytest -q tests/test_provenance.py`
+Command executed: 'uv run --locked pytest -q tests/test_provenance.py'
 
-- `test_run_manifest_contains_required_provenance` | FAILED | `build_run_manifest()` raises `NotImplementedError` instead of collecting experiment provenance.
+- 'test_run_manifest_contains_required_provenance' | FAILED | 'build_run_manifest()' raises 'NotImplementedError' instead of collecting experiment provenance.
 
 **Summary:** The provenance test failed because the starter does not yet record the Git commit, data identity, environment versions, training settings and MLflow Run ID required to reproduce an experiment.
 
 ### 0.6 Engineering Checkpoint 1
 
-Why is a working `model.pt` insufficient evidence that an experiment is reproducible?
+Why is a working 'model.pt' insufficient evidence that an experiment is reproducible?
 
-A working `model.pt` only demonstrates that a trained model has been saved and can be used. It does not provide sufficient information to reproduce the training process.
+A working 'model.pt' only demonstrates that a trained model has been saved and can be used. It does not provide sufficient information to reproduce the training process.
 Reproducibility requires the exact code version, dataset identity and splits, software dependencies, hyperparameters, random seeds and training configuration. Without this information, another developer cannot reliably reconstruct the experiment or verify how the model was obtained.
 Therefore, a reproducible ML experiment requires version-controlled code, tracked data, a locked environment and documented training runs, rather than only a saved model file.
 
@@ -63,15 +63,15 @@ The objective of this milestone is to control the main sources of randomness in 
 
 ### 1.2 Implementation
 
-The following functions were implemented in `src/reproducibility.py`:
+The following functions were implemented in 'src/reproducibility.py':
 
-- **`set_reproducibility(seed)`**: Initializes Python, NumPy and PyTorch random number generators. It also configures CUDA seeding when available and sets cuDNN deterministic and benchmark flags.
-- **`make_generator(seed)`**: Creates a PyTorch generator initialized with the specified seed to support reproducible DataLoader shuffling.
-- **`seed_worker(worker_id)`**: Initializes NumPy and Python random generators in DataLoader workers using the PyTorch worker seed.
+- **'set_reproducibility(seed)'**: Initializes Python, NumPy and PyTorch random number generators. It also configures CUDA seeding when available and sets cuDNN deterministic and benchmark flags.
+- **'make_generator(seed)'**: Creates a PyTorch generator initialized with the specified seed to support reproducible DataLoader shuffling.
+- **'seed_worker(worker_id)'**: Initializes NumPy and Python random generators in DataLoader workers using the PyTorch worker seed.
 
 ### 1.3 Test Results
 
-Command executed: `uv run --locked pytest -q tests/test_reproducibility.py`
+Command executed: 'uv run --locked pytest -q tests/test_reproducibility.py'
 
 **Result: 3 passed.**
 
@@ -89,7 +89,7 @@ The objective of this milestone is to ensure dataset versioning and reproducibil
 
 ### 2.2 Dataset Extraction and Verification
 
-The Beans dataset was extracted from the three provided ZIP archives using the dataset download script. All three archives successfully passed SHA-256 checksum verification. The extracted dataset was then independently verified using `scripts/check_dataset.py`. 
+The Beans dataset was extracted from the three provided ZIP archives using the dataset download script. All three archives successfully passed SHA-256 checksum verification. The extracted dataset was then independently verified using 'scripts/check_dataset.py'. 
 
 The following results were obtained:
 
@@ -103,24 +103,24 @@ All expected classes and image counts were confirmed. The dataset is well balanc
 
 ### 2.3 Dataset Versioning with DVC
 
-DVC was initialized within the existing Git repository, and the raw dataset located in `data/raw/` was tracked. 
+DVC was initialized within the existing Git repository, and the raw dataset located in 'data/raw/' was tracked. 
 
-The generated `data/raw.dvc` metadata file contains the following information:
+The generated 'data/raw.dvc' metadata file contains the following information:
 
 | Property | Value |
-| Directory hash | `2b62d5a2e86898b281d0136cef5fdf1c.dir` |
+| Directory hash | '2b62d5a2e86898b281d0136cef5fdf1c.dir' |
 | Hash algorithm | MD5 |
 | Dataset size | 179,914,877 bytes |
 | Number of tracked files | 1296 |
-| Tracked path | `raw` |
+| Tracked path | 'raw' |
 
-Although the dataset contains 1295 JPG images, DVC reports 1296 files because the directory also contains an additional non-image file named `healthy_train.120tore`, with a size of 6148 bytes. The additional file was preserved to avoid modifying the original extracted dataset. Its exact format has not been confirmed.
+Although the dataset contains 1295 JPG images, DVC reports 1296 files because the directory also contains an additional non-image file named 'healthy_train.120tore', with a size of 6148 bytes. The additional file was preserved to avoid modifying the original extracted dataset. Its exact format has not been confirmed.
 
 ### 2.4 DVC Remote Configuration
 
-A local DVC remote named `lab-data` was configured as the default remote.
-The storage directory is located outside the project repository at `../ai53-phase1-dvc-storage`.
-The remote configuration was successfully verified using `dvc remote list`.
+A local DVC remote named 'lab-data' was configured as the default remote.
+The storage directory is located outside the project repository at '../ai53-phase1-dvc-storage'.
+The remote configuration was successfully verified using 'dvc remote list'.
 This configuration separates the dataset storage from the Git repository and enables the retrieval of versioned data after the corresponding data objects have been pushed.
 
 ### 2.5 Engineering Checkpoint 3
@@ -142,30 +142,30 @@ The objective of this milestone is to implement an automated data-quality gate t
 
 ### 3.2 Implementation
 
-The `validate_dataset()` function was implemented in `src/validate_data.py` to perform the following checks:
+The 'validate_dataset()' function was implemented in 'src/validate_data.py' to perform the following checks:
 - Verify the existence of the required training, validation and test splits.
-- Ensure that each split contains exactly the three expected classes: `angular_leaf_spot`, `bean_rust` and `healthy`.
+- Ensure that each split contains exactly the three expected classes: 'angular_leaf_spot', 'bean_rust' and 'healthy'.
 - Verify that the number of images in each split matches the expected dataset counts.
-- Fully decode every supported image using Pillow's `Image.load()` method to detect corrupted or unreadable images.
+- Fully decode every supported image using Pillow's 'Image.load()' method to detect corrupted or unreadable images.
 - Ensure that no class or split is empty.
 - Generate a deterministic, JSON-serializable quality report.
 
-Image files are identified using the supported extensions `.jpg`, `.jpeg` and `.png`. Non-image files are excluded from the validation process without modifying the original dataset. 
+Image files are identified using the supported extensions '.jpg', '.jpeg' and '.png'. Non-image files are excluded from the validation process without modifying the original dataset. 
 The implementation follows a fail-fast approach: whenever a validation requirement is violated, an exception is raised immediately. Once integrated into the DVC pipeline, this mechanism will prevent dependent stages from executing when the dataset is invalid.
 
 ### 3.3 Unit Test Results
 
 The following command was executed:
 
-```powershell
+'''powershell
 uv run --locked pytest -q tests/test_data_validation.py tests/test_validation_contract.py
-```
+'''
 
 Result:
 
-```text
+'''text
 7 passed in 0.96s
-```
+'''
 
 All seven validation tests passed, confirming that the implementation correctly accepts valid datasets, rejects invalid datasets and produces deterministic reports.
 
@@ -173,11 +173,11 @@ All seven validation tests passed, confirming that the implementation correctly 
 
 The implemented validator was executed on the actual Beans dataset using:
 
-```powershell
+'''powershell
 uv run --locked python -m src.validate_data
-```
+'''
 
-The validation report was successfully generated at `reports/data_quality.json`.
+The validation report was successfully generated at 'reports/data_quality.json'.
 
 The following results were obtained:
 | Class | Train | Validation | Test | Total |
@@ -186,22 +186,22 @@ The following results were obtained:
 | Healthy | 341 | 44 | 42 | 427 |
 | **Total** | **1034** | **133** | **128** | **1295** |
 
-The validation status was `PASS`, confirming that all 1,295 images were successfully decoded and that all structural and image-count requirements were satisfied.
+The validation status was 'PASS', confirming that all 1,295 images were successfully decoded and that all structural and image-count requirements were satisfied.
 The results also demonstrate that the dataset is well balanced across the three classes.
 
 ### 3.5 Report Determinism
 
 To experimentally verify report determinism, the validator was executed twice on the same dataset. After each execution, the SHA-256 hash of the generated report was calculated using:
 
-```powershell
+'''powershell
 Get-FileHash reports/data_quality.json -Algorithm SHA256
-```
+'''
 
 Both executions produced the same SHA-256 hash:
 
-```text
+'''text
 38616E73BB9ED3DD315C4B3C28D5F1146976B4F2330AABBF35EE66D527E97AB3
-```
+'''
 
 The identical hashes provide strong evidence that both executions generated byte-for-byte identical reports.
 Determinism was achieved by sorting the class names, consistently serializing the JSON report and excluding timestamps and other execution-dependent information.
@@ -211,17 +211,17 @@ This property is important for DVC because unnecessary changes in output files c
 
 The complete project test suite was executed using:
 
-```powershell
+'''powershell
 uv run --locked pytest -q
-```
+'''
 
 Result:
 
-```text
+'''text
 1 failed, 18 passed in 17.52s
-```
+'''
 
-Compared with the results obtained after Milestone 1, the number of passing tests increased from 11 to 18, while the number of failing tests decreased from 8 to 1. The remaining failure corresponds to `test_run_manifest_contains_required_provenance` in `tests/test_provenance.py`, because the `build_run_manifest()` function in `src/provenance.py` has not yet been implemented. 
+Compared with the results obtained after Milestone 1, the number of passing tests increased from 11 to 18, while the number of failing tests decreased from 8 to 1. The remaining failure corresponds to 'test_run_manifest_contains_required_provenance' in 'tests/test_provenance.py', because the 'build_run_manifest()' function in 'src/provenance.py' has not yet been implemented. 
 
 ### 3.7 Conclusion
 
@@ -235,11 +235,11 @@ The objective of this milestone is to define a reproducible and dependency-aware
 
 ### 4.2 Pipeline Architecture
 
-A `dvc.yaml` file was created at the project root with four stages: `validate`, `prepare`, `train` and `evaluate`.
+A 'dvc.yaml' file was created at the project root with four stages: 'validate', 'prepare', 'train' and 'evaluate'.
 
 The pipeline follows the architecture below:
 
-```text
+'''text
           data/raw.dvc
            /       \
       validate      |
@@ -247,27 +247,27 @@ The pipeline follows the architecture below:
             prepare
             /     \
          train   evaluate
-```
+'''
 
 The TRAIN and EVALUATE stages are separate branches. TRAIN generates candidate models using the training and validation datasets, whereas EVALUATE loads an explicitly selected model from MLflow and measures its performance on the independent test dataset.
 
 ### 4.3 Stage Definition
 
 | Stage | Main inputs | Main outputs |
-| VALIDATE | Raw dataset and validation code | `reports/data_quality.json` |
-| PREPARE | Raw dataset, quality report and image size | Processed images, CSV manifests and `reports/data_summary.json` |
+| VALIDATE | Raw dataset and validation code | 'reports/data_quality.json' |
+| PREPARE | Raw dataset, quality report and image size | Processed images, CSV manifests and 'reports/data_summary.json' |
 | TRAIN | Prepared training and validation images, corresponding manifests, training parameters and Python modules | Local model checkpoint, training summary, training curves and run manifest |
 | EVALUATE | Prepared test images, manifests, selected MLflow Run ID and evaluation parameters | Test metrics and confusion matrix |
 
-Each stage includes `pyproject.toml` and `uv.lock` as dependencies to track changes to the Python environment. Relevant local Python modules are also declared as dependencies, including indirect imports.
+Each stage includes 'pyproject.toml' and 'uv.lock' as dependencies to track changes to the Python environment. Relevant local Python modules are also declared as dependencies, including indirect imports.
 
 ### 4.4 Parameter Dependency Management
 
-Individual parameters from `params.yaml` are declared under the `params` section of each stage.
+Individual parameters from 'params.yaml' are declared under the 'params' section of each stage.
 
-PREPARE tracks `data.image_size`, while TRAIN tracks the parameters related to image size, training, augmentation, computation and MLflow configuration.
+PREPARE tracks 'data.image_size', while TRAIN tracks the parameters related to image size, training, augmentation, computation and MLflow configuration.
 
-EVALUATE tracks `selection.run_id`, `data.image_size`, `evaluation.batch_size`, `compute.device`, `tracking.uri` and `tracking.experiment`.
+EVALUATE tracks 'selection.run_id', 'data.image_size', 'evaluation.batch_size', 'compute.device', 'tracking.uri' and 'tracking.experiment'.
 
 This strategy prevents unrelated parameter modifications from triggering unnecessary stage executions.
 
@@ -275,44 +275,44 @@ This strategy prevents unrelated parameter modifications from triggering unneces
 
 Large generated outputs, including processed images, dataset manifests and the local model checkpoint, are managed through the DVC cache.
 
-Small report files are declared with `cache: false` so that they can be versioned directly using Git.
+Small report files are declared with 'cache: false' so that they can be versioned directly using Git.
 
-The files `reports/train_summary.json` and `reports/test_metrics.json` are declared as DVC metrics because they contain numerical model performance results.
+The files 'reports/train_summary.json' and 'reports/test_metrics.json' are declared as DVC metrics because they contain numerical model performance results.
 
 ### 4.6 Dependency Design Questions
 
-1. Should PREPARE depend on `reports/data_quality.json`?
+1. Should PREPARE depend on 'reports/data_quality.json'?
 Yes. This dependency ensures that the data-quality gate succeeds before data preparation begins, preventing invalid datasets from reaching subsequent stages.
 
-2. Should PREPARE also depend directly on `data/raw`?
+2. Should PREPARE also depend directly on 'data/raw'?
 Yes. Raw image content can change without modifying the image counts or class distribution reported by VALIDATE. The direct dependency ensures that changes to the original images trigger data preparation even when the quality report remains unchanged.
 
-3. Which changes in `params.yaml` should make TRAIN run again?
-Changes to `data.image_size`, training hyperparameters, augmentation settings, the computing device and MLflow tracking configuration should trigger TRAIN. Changes to `evaluation.batch_size` and `selection.run_id` should not trigger training because they concern final evaluation.
+3. Which changes in 'params.yaml' should make TRAIN run again?
+Changes to 'data.image_size', training hyperparameters, augmentation settings, the computing device and MLflow tracking configuration should trigger TRAIN. Changes to 'evaluation.batch_size' and 'selection.run_id' should not trigger training because they concern final evaluation.
 
-4. Why should EVALUATE track `selection.run_id`?
+4. Why should EVALUATE track 'selection.run_id'?
 The Run ID identifies the exact model selected from MLflow. Tracking this parameter ensures that changing the selected model invalidates previous evaluation results without triggering a new training execution.
 
 5. Which file contains scores that DVC should track as metrics?
-The training summary, `reports/train_summary.json`, contains training and validation performance metrics. The final evaluation report, `reports/test_metrics.json`, contains test accuracy and test Macro-F1. Both files are declared as DVC metrics.
+The training summary, 'reports/train_summary.json', contains training and validation performance metrics. The final evaluation report, 'reports/test_metrics.json', contains test accuracy and test Macro-F1. Both files are declared as DVC metrics.
 
 ### 4.7 Pipeline Verification
 
 The pipeline definition was verified using the following commands:
 
-```bash
+'''bash
 uv run --locked dvc stage list
 uv run --locked dvc dag
-```
+'''
 
 The stage listing successfully identified all four stages:
 
-```text
+'''text
 validate
 prepare
 train
 evaluate
-```
+'''
 
 The generated dependency graph confirmed that:
 - VALIDATE depends on the raw dataset.
@@ -328,3 +328,80 @@ The four-stage DVC pipeline was successfully defined and its dependency graph wa
 
 The architecture supports selective recomputation, dataset traceability, reproducible experiment management and independent final evaluation of a model selected from MLflow.
 
+## 5. Milestone 5 — Experiment Provenance and MLflow Tracking
+
+### 5.1 Objective
+
+The objective of this milestone is to improve experiment traceability by recording the code version, dataset identity, software environment, training configuration, performance metrics and trained model associated with each training Run.
+
+### 5.2 Experiment Provenance
+
+The 'build_run_manifest()' function was implemented in 'src/provenance.py' to collect the following information:
+
+| Category | Recorded information |
+| Git | Commit SHA and working tree status |
+| Data | SHA-256 identity of the training and validation manifests |
+| Environment | Operating system, Python, PyTorch, torchvision, DVC, MLflow and CUDA versions |
+| Configuration | Image size, batch size, epochs, learning rate, dropout and augmentation settings |
+| Execution | Device, random seed and MLflow Run ID |
+
+The provenance manifest is saved as 'reports/run_manifest.json' at the beginning of each training Run, before training generates additional outputs.
+
+### 5.3 MLflow Integration
+
+The seven TODO blocks in 'src/train.py' were implemented to provide experiment tracking.
+
+1 | Capture experiment provenance
+2 | Log the eleven required Run parameters
+3 | Register the training manifest as an MLflow Dataset input
+4 | Log training and validation metrics at every epoch
+5 | Log total training duration
+6 | Log the three required report artifacts
+7 | Log the final trained PyTorch model
+
+The recorded metrics are 'train_loss', 'val_loss', 'val_accuracy', 'val_macro_f1' and 'training_seconds'.
+
+The following artifacts are logged separately for each Run:
+- 'reports/training_curves.png'
+- 'reports/train_summary.json'
+- 'reports/run_manifest.json'
+
+### 5.4 Model Packaging
+
+The final CNN is configured to be logged in MLflow under the name 'bean-cnn'.
+
+The model packaging implementation includes:
+- A normalized float32 input example obtained from the validation dataset.
+- A model signature describing the expected input and output tensor shapes.
+- Metadata containing the class names and image size.
+- CPU-based model serialization in evaluation mode.
+- The model source code through 'code_paths=["src"]'.
+- Pickle serialization, as required by the laboratory instructions.
+
+The test dataset is not used during model training or model packaging.
+
+### 5.5 Test Results
+
+The complete automated test suite was executed using:
+
+'''bash
+uv run --locked pytest -q
+'''
+
+Result:
+
+'''text
+19 passed in 8.84s
+'''
+
+All automated tests passed successfully, corresponding to a 100% success rate.
+
+The actual MLflow logging and model export will be verified during the controlled training experiments.
+
+### 5.6 Engineering Checkpoint 4
+- **Git:** Records the version and history of the source code and configuration files used for a training Run.
+- **DVC:** Records dataset versions, pipeline dependencies, parameters and generated outputs associated with pipeline executions.
+- **MLflow:** Records experiment parameters, dataset inputs, performance metrics, artifacts and trained models associated with each Run.
+
+### 5.7 Conclusion
+The experiment provenance and MLflow tracking implementations have been completed, and all automated tests pass. The project is ready for the controlled training experiments, during which the complete tracking workflow will be verified.

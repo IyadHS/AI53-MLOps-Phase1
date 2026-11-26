@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import platform
+import subprocess
+from importlib import metadata
 from pathlib import Path
 
+import torch
 
 def training_data_identity(
     train_manifest: Path = Path("data/processed/manifests/train.csv"),
@@ -42,7 +46,75 @@ def build_run_manifest(params: dict, device: str, mlflow_run_id: str) -> dict:
     Hints: subprocess, platform, importlib.metadata, torch,
     training_data_identity().
     """
-    raise NotImplementedError("Implement run provenance capture")
+    # 1. Collect Git information
+    try:
+        git_commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL
+        ).strip()
+
+        git_status = subprocess.check_output(
+            ["git", "status", "--porcelain"],
+            text=True,
+            stderr=subprocess.DEVNULL
+        ).strip()
+
+        git_dirty = bool(git_status)
+
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        git_commit = "unavailable"
+        git_dirty = None
+
+    # 2. Collect training-data identity
+    data_identity = training_data_identity()
+
+    # 3. Collect environment information
+    environment = {
+        "platform": platform.platform(),
+        "python": platform.python_version(),
+        "torch": metadata.version("torch"),
+        "torchvision": metadata.version("torchvision"),
+        "dvc": metadata.version("dvc"),
+        "mlflow": metadata.version("mlflow"),
+        "cuda": torch.version.cuda
+    }
+
+    # 4. Collect configuration information
+    configuration = {
+        "image_size": params["data"]["image_size"],
+        "batch_size": params["train"]["batch_size"],
+        "epochs": params["train"]["epochs"],
+        "learning_rate": params["train"]["learning_rate"],
+        "dropout": params["train"]["dropout"],
+        "augmentation": {
+            "enabled": params["augmentation"]["enabled"],
+            "horizontal_flip": params["augmentation"]["horizontal_flip"],
+            "rotation_degrees": params["augmentation"]["rotation_degrees"]
+        }
+    }
+
+    # 5. Collect execution information
+    execution = {
+        "device": str(device),
+        "random_state": params["train"]["random_state"],
+        "mlflow_run_id": mlflow_run_id
+    }
+
+    manifest = {
+        "git": {
+            "commit": git_commit,
+            "dirty": git_dirty
+        },
+        "data": {
+            "training_data_identity": data_identity
+        },
+        "environment": environment,
+        "configuration": configuration,
+        "execution": execution
+    }
+
+    return manifest
 
 
 def write_run_manifest(params: dict, device: str, mlflow_run_id: str, path: Path) -> dict:
