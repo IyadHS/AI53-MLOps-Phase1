@@ -581,3 +581,61 @@ The objective of this milestone is to conduct a third controlled experiment and 
 ### 7.2 Run C — Configuration and Hypothesis
 
 For Run C, the learning rate was restored to the baseline value of 0.001, and the dropout rate was increased from 0.30 to 0.50. All other hyperparameters, the dataset, the random seed and the number of epochs remain unchanged. Increasing dropout introduces stronger regularization by randomly disabling a larger proportion of activations during training. This may reduce overfitting and improve generalization. However, given the limited training budget of four epochs, stronger regularization may also slow learning and reduce final validation performance. We expect a higher training loss and potentially lower final validation macro-F1 compared with Run A. Regarding DVC, we expect VALIDATE and PREPARE to reuse their existing outputs, while TRAIN should execute again because its parameter dependencies have changed. EVALUATE will not be executed.
+
+### 7.3 Run C — Experimental Results
+
+Run C was successfully executed with a learning rate of 0.001 and a dropout rate of 0.50. The provenance manifest confirmed that the training data identity, random seed, software environment and remaining hyperparameters were unchanged compared with the baseline. 
+
+The following results were obtained:
+| Epoch | Training loss | Validation loss | Validation accuracy | Validation macro-F1 |
+| 1 | 1.0665 | 0.9981 | 0.5489 | 0.5462 |
+| 2 | 0.9341 | 0.8831 | 0.6165 | 0.6045 |
+| 3 | 0.8959 | 0.8481 | 0.6541 | 0.6511 |
+| 4 | 0.8825 | 0.8396 | 0.6165 | 0.6068 |
+
+Experiment provenance:
+- MLflow Run ID: '9dfd3efce53743d6ab6dea8829f5998d'
+- Git commit: '16db074a37dfbfc706aed36696dce975e5d48061'
+- Git dirty flag: 'true'
+- Training data identity: '8fa943ff6c17a3c874d2b152e9d7980602a5cd50c0d8156625bd00590a3d8c6c'
+- Training device: CPU
+- Random seed: 42
+- Training duration: 13.73 seconds
+
+The Git dirty flag was recorded as true. The exact cause of the uncommitted changes was not independently verified. The DVC execution also confirmed the expected pipeline behaviour:
+| Stage | Expected | Observed |
+| VALIDATE | REUSED | REUSED |
+| PREPARE | REUSED | REUSED |
+| TRAIN | RERUN | RERUN |
+| EVALUATE | NOT RUN | NOT RUN |
+
+### 7.4 Comparison of the Three Controlled Runs
+
+The three experiments were compared using their final-epoch validation metrics because the training pipeline saves the model obtained at the end of the final epoch.
+
+| Run | Controlled change | Val. Accuracy | Val. Macro-F1 | Training time | MLflow Run ID |
+| A | Baseline | 0.6391 | 0.6254 | 11.26 s | 'e220c216b7ff4f4bacca5a3eb8de09f5' |
+| B | Learning rate = 0.0003 | 0.6165 | 0.6091 | 8.05 s | 'd0c42523f95c421ca51a428e824acdb6' |
+| C | Dropout = 0.50 | 0.6165 | 0.6068 | 13.73 s | '9dfd3efce53743d6ab6dea8829f5998d' |
+
+### 7.5 Results Interpretation
+
+**Run B compared with Run A**
+
+Reducing the learning rate from 0.001 to 0.0003 resulted in a higher final training loss and lower validation performance. The validation macro-F1 decreased from 0.6254 to 0.6091, representing a reduction of approximately 1.63 percentage points. These observations support the initial hypothesis that a smaller learning rate may slow convergence within a fixed training budget of four epochs.
+
+**Run C compared with Run A**
+
+Increasing dropout from 0.30 to 0.50 resulted in a higher final training loss, increasing from 0.8672 to 0.8825. The final validation macro-F1 decreased from 0.6254 to 0.6068, representing a reduction of approximately 1.86 percentage points. These observations support the hypothesis that stronger regularization may make learning more difficult within the limited training budget. Although Run C achieved a validation macro-F1 of 0.6511 at epoch 3, this value was not used for model selection because the saved model corresponds to epoch 4.
+
+**Experimental limitations**
+
+All experiments were conducted using a single random seed, four training epochs and a relatively small validation dataset of 133 images. Consequently, small differences in validation performance do not establish that one hyperparameter configuration is universally superior. Similarly, the measured training durations may be influenced by system load and other execution conditions.
+
+### 7.6 Engineering Checkpoint 6 — Model Selection Metric
+
+Macro-F1 was selected as the primary validation metric because the classification problem contains three classes: angular leaf spot, bean rust and healthy. Macro-F1 calculates the F1-score independently for each class and averages the results with equal weighting. It considers both precision and recall and provides a measure of performance across all three classes. In the event of a tie, validation accuracy is used as the secondary criterion, followed by training duration if both validation metrics are identical. The test dataset must only be used after model selection to preserve its independence from the training and hyperparameter selection processes. Using test results to compare or select models would introduce selection bias and could produce an overly optimistic estimate of generalization performance.
+
+### 7.7 Conclusion
+
+Among the three controlled experiments, Run A achieved the highest final validation macro-F1 of 0.6254 and the highest validation accuracy of 0.6391. According to the selection criteria established before training, Run A is the leading candidate for the final test evaluation. No test evaluation was performed during the controlled experiment comparison.

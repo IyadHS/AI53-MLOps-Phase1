@@ -6,10 +6,10 @@
       "rotation_degrees": 10
     },
     "batch_size": 32,
-    "dropout": 0.3,
+    "dropout": 0.5,
     "epochs": 4,
     "image_size": 96,
-    "learning_rate": 0.0003
+    "learning_rate": 0.001
   },
   "data": {
     "training_data_identity": "8fa943ff6c17a3c874d2b152e9d7980602a5cd50c0d8156625bd00590a3d8c6c"
@@ -25,11 +25,11 @@
   },
   "execution": {
     "device": "cpu",
-    "mlflow_run_id": "d0c42523f95c421ca51a428e824acdb6",
+    "mlflow_run_id": "9dfd3efce53743d6ab6dea8829f5998d",
     "random_state": 42
   },
   "git": {
-    "commit": "be6ab8ec88be0bd28180ed9012acc8b877fa748d",
+    "commit": "16db074a37dfbfc706aed36696dce975e5d48061",
     "dirty": true
   }
 }
