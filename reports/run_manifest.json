@@ -9,7 +9,7 @@
     "dropout": 0.3,
     "epochs": 4,
     "image_size": 96,
-    "learning_rate": 0.001
+    "learning_rate": 0.0003
   },
   "data": {
     "training_data_identity": "8fa943ff6c17a3c874d2b152e9d7980602a5cd50c0d8156625bd00590a3d8c6c"
@@ -25,11 +25,11 @@
   },
   "execution": {
     "device": "cpu",
-    "mlflow_run_id": "e220c216b7ff4f4bacca5a3eb8de09f5",
+    "mlflow_run_id": "d0c42523f95c421ca51a428e824acdb6",
     "random_state": 42
   },
   "git": {
-    "commit": "d09c8a7f42ccf3180f51f956fd50f195ab4fd2a5",
+    "commit": "be6ab8ec88be0bd28180ed9012acc8b877fa748d",
     "dirty": true
   }
 }
