@@ -444,3 +444,78 @@ Run A uses the baseline learning rate of 0.001, while Run B uses a lower learnin
 A lower learning rate is expected to produce smaller parameter updates and potentially more stable optimization. However, because training is limited to four epochs, Run B may converge more slowly and achieve lower final validation performance than Run A.
 
 This hypothesis will be verified through controlled experiments.
+
+### 6.5 Baseline Experiment — Run A
+
+The MLflow tracking server was successfully started using a local SQLite backend. The baseline experiment was executed using: `uv run --locked dvc repro train`
+DVC executed the VALIDATE, PREPARE and TRAIN stages successfully. The EVALUATE stage was not executed.
+The dataset validation report confirmed that all 1,295 images passed the data-quality checks. The preparation stage resized the images to 96 × 96 pixels and generated the dataset manifests.
+
+#### Baseline Results
+
+| Metric | Value |
+| Learning rate | 0.001 |
+| Epochs | 4 |
+| Training loss | 0.867199 |
+| Validation loss | 0.832899 |
+| Validation accuracy | 0.639098 |
+| Validation macro-F1 | 0.625419 |
+| Training duration | 11.2569 seconds |
+| Total MLflow Run duration | 19.7 seconds |
+| Device | CPU |
+
+**MLflow Run ID:** `e220c216b7ff4f4bacca5a3eb8de09f5`
+
+#### Training Behaviour
+
+Both training and validation losses decreased throughout the four epochs, indicating successful optimization. Validation accuracy and macro-F1 reached their highest values at epoch 3 before decreasing slightly at epoch 4.
+Since the pipeline saves the final-epoch model, the epoch 4 metrics are retained for the controlled experiment comparison.
+
+#### Provenance Verification
+The generated provenance manifest recorded the Git commit, training data identity, software environment, hyperparameters, random seed, execution device and MLflow Run ID.
+The training data identity was successfully computed from the training and validation manifests:
+`8fa943ff6c17a3c874d2b152e9d7980602a5cd50c0d8156625bd00590a3d8c6c`
+
+Although the Git working tree was clean before pipeline execution, the provenance manifest recorded a dirty working tree at the beginning of TRAIN. This is consistent with DVC generating uncommitted pipeline outputs during the preceding stages.
+The MLflow dashboard confirmed that Run A finished successfully and that the training dataset was registered under the name `bean-training` with the training context.
+
+### 6.6 DVC Recomputation Checks
+
+Two recomputation checks were performed after the baseline experiment using `uv run --locked dvc repro train`.
+
+| Change | VALIDATE | PREPARE | TRAIN | EVALUATE |
+| Initial baseline execution | RERUN | RERUN | RERUN | NOT RUN |
+| No changes | REUSED | REUSED | REUSED | NOT RUN |
+| Comment added to `src/validate_data.py` | RERUN | REUSED | REUSED | NOT RUN |
+
+#### Check 1 — No Changes
+
+Relevant terminal output:
+
+```
+Stage 'validate' didn't change, skipping
+Stage 'prepare' didn't change, skipping
+Stage 'train' didn't change, skipping
+Data and pipelines are up to date.
+```
+
+All stages were skipped because their dependencies, parameters and outputs remained unchanged. No additional MLflow Run was created.
+
+#### Check 2 — Validation Source-Code Modification
+
+A comment was added to `src/validate_data.py` without modifying its executable code.
+
+Relevant terminal output:
+
+```
+Running stage 'validate':
+> uv run --locked python -m src.validate_data
+Updating lock file 'dvc.lock'
+
+Stage 'prepare' didn't change, skipping
+Stage 'train' didn't change, skipping
+```
+
+VALIDATE was executed because its source-code dependency changed. However, the generated quality report remained identical. Therefore, PREPARE and TRAIN reused their existing outputs.
+
+Both recomputation checks matched the initial predictions. These results demonstrate that DVC avoids unnecessary computation when downstream dependencies remain unchanged.

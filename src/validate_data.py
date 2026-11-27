@@ -1,3 +1,4 @@
+# Validate the dataset structure, image integrity and expected counts
 from __future__ import annotations
 
 import json
