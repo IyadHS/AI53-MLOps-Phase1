@@ -395,7 +395,6 @@ Result:
 '''
 
 All automated tests passed successfully, corresponding to a 100% success rate.
-
 The actual MLflow logging and model export will be verified during the controlled training experiments.
 
 ### 5.6 Engineering Checkpoint 4
@@ -405,3 +404,43 @@ The actual MLflow logging and model export will be verified during the controlle
 
 ### 5.7 Conclusion
 The experiment provenance and MLflow tracking implementations have been completed, and all automated tests pass. The project is ready for the controlled training experiments, during which the complete tracking workflow will be verified.
+
+## 6. Milestone 6 — DVC Recomputation and Controlled Experiments
+
+### 6.1 Objective
+
+The objective of this milestone is to investigate DVC's dependency-based recomputation mechanism and compare two controlled training Runs using different learning rates.
+
+### 6.2 Predicted Pipeline Behaviour
+
+The following predictions assume that all pipeline outputs are initially up to date, each modification is considered independently, and the selected MLflow Run ID remains fixed.
+
+| Change | VALIDATE | PREPARE | TRAIN | EVALUATE |
+| Change `train.learning_rate` | REUSED | REUSED | RERUN | REUSED |
+| Change `data.image_size` | REUSED | RERUN | RERUN | NEEDS UPDATE |
+| Edit `src/validate_data.py` without changing the quality report | RERUN | REUSED | REUSED | REUSED |
+| Edit only `README.md` | REUSED | REUSED | REUSED | REUSED |
+
+### 6.3 Engineering Checkpoint 5
+
+**Learning-rate modification**
+
+VALIDATE is reused because its source code, raw dataset and environment dependencies remain unchanged. PREPARE is reused because its preparation dependencies and image-size parameter remain unchanged. TRAIN must rerun because `train.learning_rate` is a declared parameter of the training stage. EVALUATE is reused because the selected MLflow Run ID, prepared data and evaluation parameters remain unchanged.
+
+**Validation source-code modification**
+
+VALIDATE must rerun because `src/validate_data.py` is a declared dependency. PREPARE is reused because the raw dataset and generated quality report remain identical. TRAIN is reused because the prepared training and validation data and their manifests remain unchanged. EVALUATE is reused because its dependencies and selected MLflow Run ID remain unchanged.
+
+These predictions demonstrate that DVC determines stage recomputation based on declared dependencies, parameters and output changes rather than automatically rerunning the entire pipeline.
+
+### 6.4 Model Selection Criteria and Experimental Hypothesis
+
+The primary model selection metric is the final-epoch validation macro-F1 score because it gives equal importance to all three classes and considers both precision and recall.
+
+In the event of a tie, the model with the highest final-epoch validation accuracy will be preferred. If both metrics are identical, the model with the shortest training duration will be selected.
+
+Run A uses the baseline learning rate of 0.001, while Run B uses a lower learning rate of 0.0003. All other training parameters remain unchanged.
+
+A lower learning rate is expected to produce smaller parameter updates and potentially more stable optimization. However, because training is limited to four epochs, Run B may converge more slowly and achieve lower final validation performance than Run A.
+
+This hypothesis will be verified through controlled experiments.
