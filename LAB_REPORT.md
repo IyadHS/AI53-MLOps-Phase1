@@ -659,3 +659,61 @@ Selected MLflow Run ID: 'e220c216b7ff4f4bacca5a3eb8de09f5'
 
 Run A achieved the highest final validation macro-F1 among the three controlled experiments. It also achieved the highest validation accuracy and the lowest validation loss. Although Run B required less training time, Run A was selected because validation macro-F1 was defined as the primary selection criterion. 
 A limitation of this selection is that the experiments were conducted using a single random seed, a limited number of epochs and a relatively small validation dataset. Therefore, the observed differences do not establish that the baseline configuration is universally superior. The selected Run ID was recorded in params.yaml before accessing the test dataset. No test performance was used during model selection. The evaluation pipeline will retrieve the selected model directly from MLflow, avoiding unnecessary retraining and ensuring that the evaluated model corresponds to the selected experiment.
+
+### 8.3 Final Test Execution
+
+The selected MLflow Run ID was recorded in params.yaml, and the model selection was committed before executing the final test.
+
+Selection commit: 'd66dcdf'
+
+The evaluation was executed using:
+'uv run --locked dvc repro evaluate'
+
+DVC reused the existing validation and preparation outputs and executed the EVALUATE stage without retraining the model.
+
+The evaluation script successfully retrieved the selected model from MLflow using: 'runs:/e220c216b7ff4f4bacca5a3eb8de09f5/bean-cnn'
+
+The compatibility checks for the selected Run, experiment, image size, class order and training data identity were successfully passed.
+
+### 8.4 Final Test Results
+
+The selected model was evaluated on the independent test dataset containing 128 images.
+
+| Metric | Validation | Test |
+| Accuracy | 0.6391 | 0.6484 |
+| Macro-F1 | 0.6254 | 0.6445 |
+| Number of images | 133 | 128 |
+
+The model correctly classified 83 images and incorrectly classified 45 images. The final test accuracy was 64.84%, and the final test macro-F1 was 64.45%. 
+The selected MLflow Run ID was verified in reports/test_metrics.json: 'e220c216b7ff4f4bacca5a3eb8de09f5'
+The training data identity also matched the identity recorded during training:  '8fa943ff6c17a3c874d2b152e9d7980602a5cd50c0d8156625bd00590a3d8c6c'
+
+### 8.5 Confusion Matrix Analysis
+
+The confusion matrix was generated and saved in reports/test_confusion_matrix.png.
+
+| Actual / Predicted | Angular leaf spot | Bean rust | Healthy |
+| Angular leaf spot | 23 | 10 | 10 |
+| Bean rust | 7 | 26 | 10 |
+| Healthy | 2 | 6 | 34 |
+
+The healthy class achieved the highest recall, with 34 correctly classified images out of 42, corresponding to approximately 80.95%. Bean rust achieved a recall of 60.47%, while angular leaf spot achieved the lowest recall of 53.49%. The confusion matrix indicates that the model has difficulty distinguishing between the two disease classes and identifying some diseased leaves. In particular, 20 diseased leaves were incorrectly classified as healthy. The test results were slightly higher than the validation results. However, due to the limited dataset size and the use of a single random seed, this difference does not establish the absence of overfitting.
+
+### 8.6 Evaluation Reproducibility and Traceability
+
+The final evaluation demonstrated the independence of the TRAIN and EVALUATE stages. Although Run C was the most recently trained model, the evaluation pipeline successfully retrieved Run A directly from MLflow using its unique Run ID. The final test results can therefore be associated with a specific trained model, dataset identity, configuration and recorded Git commit. No additional model training or hyperparameter selection was performed using the test dataset.
+
+## General Conclusion
+
+The objective of Phase 1 was to transform a basic machine learning project into a reproducible, traceable and version-controlled MLOps workflow. Throughout the project, several engineering practices were implemented:
+- Dependency management and environment reproducibility using uv.
+- Source code and configuration versioning using Git.
+- Dataset versioning and pipeline orchestration using DVC.
+- Automated dataset quality validation.
+- Random seed management for reproducible training.
+- Experiment provenance and model tracking using MLflow.
+- Controlled hyperparameter experimentation.
+- Model selection based on validation metrics.
+- Independent final test evaluation.
+
+Three controlled training experiments were conducted. Run A was selected based on its superior final validation macro-F1 of 0.6254. The selected model achieved a final test accuracy of 0.6484 and a test macro-F1 of 0.6445. Although the classification performance remains moderate, the project demonstrates the essential engineering practices required to build a reproducible and traceable machine learning pipeline. The resulting workflow provides a foundation for the subsequent phases of the MLOps project.
