@@ -639,3 +639,23 @@ Macro-F1 was selected as the primary validation metric because the classificatio
 ### 7.7 Conclusion
 
 Among the three controlled experiments, Run A achieved the highest final validation macro-F1 of 0.6254 and the highest validation accuracy of 0.6391. According to the selection criteria established before training, Run A is the leading candidate for the final test evaluation. No test evaluation was performed during the controlled experiment comparison.
+
+## Milestone 8 — Select and Test One Model
+
+### 8.1 Objective
+
+The objective of this milestone is to select the best model from the three controlled experiments and evaluate its generalization performance using the independent test dataset.
+
+### 8.2 Model Selection
+
+Based on the model selection criteria established in Milestone 6, Run A was selected for the final test evaluation.
+The selected model achieved the following final-epoch validation results:
+- Validation macro-F1: 0.6254
+- Validation accuracy: 0.6391
+- Validation loss: 0.8329
+- Training duration: 11.26 seconds
+
+Selected MLflow Run ID: 'e220c216b7ff4f4bacca5a3eb8de09f5'
+
+Run A achieved the highest final validation macro-F1 among the three controlled experiments. It also achieved the highest validation accuracy and the lowest validation loss. Although Run B required less training time, Run A was selected because validation macro-F1 was defined as the primary selection criterion. 
+A limitation of this selection is that the experiments were conducted using a single random seed, a limited number of epochs and a relatively small validation dataset. Therefore, the observed differences do not establish that the baseline configuration is universally superior. The selected Run ID was recorded in params.yaml before accessing the test dataset. No test performance was used during model selection. The evaluation pipeline will retrieve the selected model directly from MLflow, avoiding unnecessary retraining and ensuring that the evaluated model corresponds to the selected experiment.
