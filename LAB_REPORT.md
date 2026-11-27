@@ -571,3 +571,13 @@ Run A remains the preferred model among the two eligible experiments according t
 The recomputation checks also demonstrated that DVC selectively executes stages according to their declared dependencies and parameters, avoiding unnecessary computation.
 
 The test dataset was not used for model performance evaluation during these experiments. Final model selection will be performed after Run C using validation results only.
+
+## Milestone 7 — Compare Three Controlled Runs
+
+### 7.1 Objective
+
+The objective of this milestone is to conduct a third controlled experiment and compare its validation performance with the baseline and the lower learning rate experiment.
+
+### 7.2 Run C — Configuration and Hypothesis
+
+For Run C, the learning rate was restored to the baseline value of 0.001, and the dropout rate was increased from 0.30 to 0.50. All other hyperparameters, the dataset, the random seed and the number of epochs remain unchanged. Increasing dropout introduces stronger regularization by randomly disabling a larger proportion of activations during training. This may reduce overfitting and improve generalization. However, given the limited training budget of four epochs, stronger regularization may also slow learning and reduce final validation performance. We expect a higher training loss and potentially lower final validation macro-F1 compared with Run A. Regarding DVC, we expect VALIDATE and PREPARE to reuse their existing outputs, while TRAIN should execute again because its parameter dependencies have changed. EVALUATE will not be executed.
